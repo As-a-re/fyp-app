@@ -1,0 +1,22 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "Uids",
+    "Agora",
+    "callService",
+    "remoteUids",
+    "localUid",
+    "doctorId",
+    "doctorName",
+    "callType",
+    "callActive",
+    "audioMuted",
+    "videoMuted",
+    "speakerEnabled",
+    "callDuration",
+    "IncomingCallModal",
+    "Tavus"
+  ],
+  "ignorePaths": ["node_modules", ".next", "dist", "build"]
+}
