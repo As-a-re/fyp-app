@@ -1,11 +1,20 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+    AudioModule,
+    RecordingPresets,
+    setAudioModeAsync,
+    useAudioPlayer,
+    useAudioRecorder,
+    useAudioRecorderState,
+} from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     FlatList,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     StyleSheet,
     Text,
@@ -19,8 +28,44 @@ import { Colors } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
 import { messageAPI } from "../services/api";
 
+// Plays a voice-note message inline. A tiny standalone component (rather
+// than inlined in MessageBubble) so each bubble owns its own player
+// instance/state - expo-audio's useAudioPlayer hook must be called at a
+// stable position, so this can't live inside a conditional branch of
+// MessageBubble itself.
+const AudioMessagePlayer = ({ uri, tint }) => {
+  const player = useAudioPlayer(uri ? { uri } : null);
+  const [playing, setPlaying] = useState(false);
+
+  const toggle = () => {
+    if (!uri) return;
+    if (playing) {
+      player.pause();
+      setPlaying(false);
+    } else {
+      player.seekTo(0);
+      player.play();
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <TouchableOpacity onPress={toggle} style={styles.audioMessageRow} disabled={!uri}>
+      <MaterialCommunityIcons
+        name={playing ? "pause-circle" : "play-circle"}
+        size={32}
+        color={tint}
+      />
+      <Text style={[styles.audioMessageLabel, { color: tint }]}>
+        {uri ? "Voice message" : "Voice message (unavailable)"}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
 const MessageBubble = ({ message, colors, isSender, currentUserId }) => {
   const isCurrentUserSender = message.sender_id === currentUserId;
+  const bubbleTextColor = isCurrentUserSender ? "#fff" : colors.text;
 
   return (
     <View
@@ -39,14 +84,28 @@ const MessageBubble = ({ message, colors, isSender, currentUserId }) => {
             : { backgroundColor: colors.card },
         ]}
       >
-        <Text
-          style={[
-            styles.messageText,
-            { color: isCurrentUserSender ? "#fff" : colors.text },
-          ]}
-        >
-          {message.message}
-        </Text>
+        {message.message_type === "audio" ? (
+          <AudioMessagePlayer uri={message.media_signed_url} tint={bubbleTextColor} />
+        ) : message.message_type === "video" ? (
+          <View style={styles.videoMessageRow}>
+            <MaterialCommunityIcons name="video" size={28} color={bubbleTextColor} />
+            <Text style={[styles.audioMessageLabel, { color: bubbleTextColor }]}>
+              {message.media_signed_url ? "Video message" : "Video message (unavailable)"}
+            </Text>
+            {message.media_signed_url && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(message.media_signed_url)}
+                style={styles.videoOpenButton}
+              >
+                <MaterialCommunityIcons name="play" size={18} color={bubbleTextColor} />
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <Text style={[styles.messageText, { color: bubbleTextColor }]}>
+            {message.message}
+          </Text>
+        )}
         <Text
           style={[
             styles.messageTime,
@@ -77,6 +136,15 @@ export default function ChatDoctorScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [recording, setRecording] = useState(false);
+
+  // Native (iOS/Android) voice-note recorder - same expo-audio pattern
+  // already proven working in components/TwiAIComponent.js.
+  const nativeRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const nativeRecorderState = useAudioRecorderState(nativeRecorder);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const chunksRef = useRef([]);
 
   useEffect(() => {
     if (doctorId) {
@@ -86,6 +154,12 @@ export default function ChatDoctorScreen() {
       return () => clearInterval(interval);
     }
   }, [doctorId]);
+
+  useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   const loadMessages = async () => {
     try {
@@ -136,6 +210,139 @@ export default function ChatDoctorScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadMessages();
+  };
+
+  // --- Voice note recording ---
+  // Web: browser MediaRecorder. Native: expo-audio. Both land on
+  // submitMediaMessage, mirroring the pattern in components/TwiAIComponent.js.
+  const submitMediaMessage = async (mediaSource, filenameHint) => {
+    setSending(true);
+    try {
+      await messageAPI.sendMediaMessage(doctorId, mediaSource, {
+        filename: filenameHint,
+      });
+      await loadMessages();
+    } catch (error) {
+      console.error("Error sending media message:", error);
+      Alert.alert("Error", error.message || "Failed to send voice message.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startWebRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      chunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        chunksRef.current = [];
+        await submitMediaMessage(blob, "voice.webm");
+      };
+
+      recorder.start();
+      setRecording(true);
+    } catch (error) {
+      console.error("Microphone error:", error);
+      Alert.alert("Error", "Could not access the microphone.");
+    }
+  };
+
+  const stopWebRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  const startNativeRecording = async () => {
+    try {
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Microphone permission needed",
+          "Please allow microphone access to send voice messages.",
+        );
+        return;
+      }
+
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await nativeRecorder.prepareToRecordAsync();
+      nativeRecorder.record();
+      setRecording(true);
+    } catch (error) {
+      console.error("Failed to start native recording:", error);
+      Alert.alert("Error", "Could not start recording.");
+    }
+  };
+
+  const stopNativeRecording = async () => {
+    try {
+      await nativeRecorder.stop();
+      setRecording(false);
+
+      const uri = nativeRecorder.uri;
+      if (!uri) return;
+
+      await submitMediaMessage({ uri, name: "voice.m4a", type: "audio/m4a" });
+    } catch (error) {
+      console.error("Failed to stop native recording:", error);
+      Alert.alert("Error", "Could not process the recording.");
+      setRecording(false);
+    }
+  };
+
+  const isRecording = Platform.OS === "web" ? recording : recording || nativeRecorderState.isRecording;
+  const startRecording = () => (Platform.OS === "web" ? startWebRecording() : startNativeRecording());
+  const stopRecording = () => (Platform.OS === "web" ? stopWebRecording() : stopNativeRecording());
+
+  // --- Video message ---
+  // Records via the native camera UI (expo-image-picker) rather than a
+  // custom camera view - much less to build/get wrong, and the picker
+  // already handles permissions and a proper recording UI itself.
+  const handleRecordVideo = async () => {
+    try {
+      const ImagePicker = require("expo-image-picker");
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Camera permission needed", "Please allow camera access to send video messages.");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        videoMaxDuration: 60,
+        quality: 0.6,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      if (Platform.OS === "web") {
+        // On web, expo-image-picker returns a data: URI - convert to a Blob.
+        const blob = await fetch(asset.uri).then((r) => r.blob());
+        await submitMediaMessage(blob, "video.mp4");
+      } else {
+        await submitMediaMessage({
+          uri: asset.uri,
+          name: "video.mp4",
+          type: asset.mimeType || "video/mp4",
+        });
+      }
+    } catch (error) {
+      console.error("Video capture error:", error);
+      Alert.alert("Error", "Could not record video.");
+    }
   };
 
   const handleStartVoiceCall = () => {
@@ -313,6 +520,28 @@ export default function ChatDoctorScreen() {
             maxLength={1000}
             editable={!sending}
           />
+          {!inputText.trim() && (
+            <>
+              <TouchableOpacity
+                onPress={handleRecordVideo}
+                disabled={sending || isRecording}
+                style={styles.mediaButton}
+              >
+                <MaterialCommunityIcons name="video-plus" size={24} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={isRecording ? stopRecording : startRecording}
+                disabled={sending}
+                style={[styles.mediaButton, isRecording && styles.mediaButtonActive]}
+              >
+                <MaterialCommunityIcons
+                  name={isRecording ? "stop" : "microphone"}
+                  size={24}
+                  color={isRecording ? "#fff" : colors.primary}
+                />
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity
             onPress={handleSendMessage}
             disabled={sending || !inputText.trim()}
@@ -440,6 +669,39 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  mediaButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
+  },
+  mediaButtonActive: {
+    backgroundColor: "#ef4444",
+  },
+  audioMessageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+    minWidth: 160,
+  },
+  videoMessageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+    minWidth: 160,
+  },
+  audioMessageLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  videoOpenButton: {
+    marginLeft: "auto",
+    padding: 4,
   },
   loadingContainer: {
     flex: 1,

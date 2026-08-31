@@ -118,13 +118,26 @@ class ApiClient {
     });
   }
 
+  async patch(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
   async delete(endpoint) {
     return this.request(endpoint, {
       method: "DELETE",
     });
   }
 
-  // Handle file uploads
+  // Handle file uploads. Content-Type is deliberately NOT set manually:
+  // fetch/XMLHttpRequest auto-generates the correct
+  // "multipart/form-data; boundary=..." header (with the boundary the
+  // server's multipart parser needs) only when you don't override
+  // Content-Type yourself. Setting it manually without a boundary - as
+  // this method previously did - silently breaks multer's parsing on
+  // every request that uses this method.
   async upload(endpoint, formData) {
     const token = await this.getToken();
     const url = `${this.baseURL}${endpoint}`;
@@ -132,7 +145,6 @@ class ApiClient {
     const config = {
       method: "POST",
       headers: {
-        "Content-Type": "multipart/form-data",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: formData,
@@ -289,6 +301,47 @@ export const speechAPI = {
 // Messaging API
 export const messageAPI = {
   sendMessage: (messageData) => apiClient.post("/messages/send", messageData),
+  // Sends a voice note or video clip. mediaSource is a web Blob, or on
+  // native a { uri, name, type } file descriptor (same shape used by
+  // twiAPI.sendVoice). Uses a manual fetch, not apiClient.post (which
+  // always JSON-encodes) or apiClient.upload (see the boundary note on
+  // that method) - built the same safe way as twiAPI.sendVoice.
+  sendMediaMessage: async (recipientId, mediaSource, extra = {}) => {
+    const token = await apiClient.getToken();
+    const formData = new FormData();
+    formData.append("recipient_id", recipientId);
+
+    if (mediaSource && typeof mediaSource === "object" && "uri" in mediaSource) {
+      formData.append("media", {
+        uri: mediaSource.uri,
+        name: mediaSource.name || "media",
+        type: mediaSource.type || "application/octet-stream",
+      });
+    } else {
+      formData.append("media", mediaSource, extra.filename || "media");
+    }
+
+    Object.entries(extra).forEach(([key, value]) => {
+      if (key === "filename") return;
+      formData.append(key, String(value));
+    });
+
+    const response = await fetch(`${apiClient.baseURL}/messages/send`, {
+      method: "POST",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "Failed to send media message");
+    }
+
+    return data;
+  },
   getConversation: (userId, params = {}) =>
     apiClient.get(`/messages/conversation/${userId}`, params),
   getConversations: (params = {}) =>
@@ -339,6 +392,43 @@ export const doctorAPI = {
   addNote: (patientId, noteData) =>
     apiClient.post(`/doctor/patients/${patientId}/notes`, noteData),
   browseDoctors: (params = {}) => apiClient.get("/doctor/browse", params),
+  // Matches GET/PATCH /api/doctor/symptom-reviews - see
+  // backend/src/routes/doctor.js
+  getSymptomReviews: (params = {}) =>
+    apiClient.get("/doctor/symptom-reviews", params),
+  submitSymptomReview: (symptomId, feedback) =>
+    apiClient.patch(`/doctor/symptom-reviews/${symptomId}`, { feedback }),
+};
+
+// Symptom report + clinician review API (patient side). Matches
+// POST /api/ai/analyze-symptom and GET /api/ai/my-symptom-reviews - see
+// backend/src/routes/ai.js. Kept separate from aiAPI since it's a distinct
+// feature (Report Symptoms screen) with its own multipart submit shape.
+export const symptomAPI = {
+  // formData is built by the caller (app/symptom-checker.js) with
+  // symptom_text/duration/severity_level fields and an optional "photo"
+  // file part. Sent with a manual fetch (not apiClient.post, which always
+  // JSON-encodes) and without a manual Content-Type, for the same boundary
+  // reason documented on apiClient.upload() above.
+  submit: async (formData) => {
+    const token = await apiClient.getToken();
+    const response = await fetch(`${apiClient.baseURL}/ai/analyze-symptom`, {
+      method: "POST",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "Failed to submit symptom report");
+    }
+
+    return data;
+  },
+  getMyReviews: (params = {}) => apiClient.get("/ai/my-symptom-reviews", params),
 };
 
 // Video/Voice Call API
