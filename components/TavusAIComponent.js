@@ -213,10 +213,11 @@ export default function TavusAIAssistant() {
       setStatus("active");
     } catch (error) {
       console.error("Failed to start conversation:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to start Tavus conversation",
-      );
+      const tavusMessage =
+        error.status === 402
+          ? `${error.message || "Tavus rejected the conversation request"}\n\nThis is usually an account/plan/usage restriction on Tavus, not an Expo issue. Check the Tavus Developer Portal for the API key/account being used.${error.hint ? `\n\n${error.hint}` : ""}`
+          : (error.message || "Failed to start Tavus conversation");
+      Alert.alert("Tavus Conversation Error", tavusMessage);
       setStatus("idle");
     } finally {
       setIsLoading(false);

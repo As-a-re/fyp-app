@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNav from "../components/BottomNav";
 import { Colors } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
-import { appointmentAPI } from "../services/api";
+import { appointmentAPI, doctorAPI } from "../services/api";
 
 const DoctorCard = ({ doctor, colors, onPress }) => {
   const image =
@@ -71,16 +71,12 @@ export default function AppointmentsScreen() {
   const loadDoctors = async () => {
     setLoading(true);
     try {
-      // Try to get available doctors for appointments
-      const response = await appointmentAPI.getAvailableDoctors?.({
-        limit: 50,
-      });
-      if (response?.doctors) {
-        setDoctors(response.doctors);
-      } else {
-        // Fallback: set empty state if endpoint doesn't exist
-        setDoctors([]);
-      }
+      // GET /doctor/browse (doctorAPI.browseDoctors) is the existing,
+      // real endpoint for this - appointmentAPI never had a
+      // getAvailableDoctors method, so this screen's doctor list was
+      // always empty.
+      const response = await doctorAPI.browseDoctors({ limit: 50 });
+      setDoctors(response?.doctors || []);
     } catch (error) {
       console.log("Could not load doctors:", error);
       setDoctors([]);

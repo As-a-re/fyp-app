@@ -222,7 +222,6 @@ export default function MessagesScreen() {
             )}
             keyExtractor={(item, index) => item.id || `message-${index}`}
             contentContainerStyle={styles.messagesContainer}
-            inverted
           />
 
           <View
@@ -326,7 +325,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   chatUserName: { fontSize: 18, fontWeight: "bold" },
-  messagesContainer: { padding: 10, flexDirection: "column-reverse" },
+  messagesContainer: { padding: 10, paddingBottom: 20 },
   messageBubble: {
     padding: 12,
     borderRadius: 20,

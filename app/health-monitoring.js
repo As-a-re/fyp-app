@@ -79,7 +79,7 @@ const HealthForm = ({
       />
       <TextInput
         style={[styles.input, { backgroundColor: colors.background }]}
-        placeholder="Temperature (36.6)"
+        placeholder="Temperature °C (36.6)"
         value={temperature}
         onChangeText={setTemperature}
         keyboardType="numeric"
@@ -201,8 +201,8 @@ export default function HealthMonitoringScreen() {
       // Add temperature if provided (parse as float)
       if (temperature.trim()) {
         const tempValue = parseFloat(temperature);
-        if (isNaN(tempValue) || tempValue < 95 || tempValue > 105) {
-          Alert.alert("Error", "Temperature must be between 95-105°F");
+        if (isNaN(tempValue) || tempValue < 35 || tempValue > 42) {
+          Alert.alert("Error", "Temperature must be between 35-42°C");
           setSaving(false);
           return;
         }

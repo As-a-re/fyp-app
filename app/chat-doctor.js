@@ -137,6 +137,7 @@ export default function ChatDoctorScreen() {
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const flatListRef = useRef(null);
 
   // Native (iOS/Android) voice-note recorder - same expo-audio pattern
   // already proven working in components/TwiAIComponent.js.
@@ -460,7 +461,8 @@ export default function ChatDoctorScreen() {
 
         {messages.length > 0 ? (
           <FlatList
-            data={[...messages].reverse()}
+            ref={flatListRef}
+            data={messages}
             renderItem={({ item }) => (
               <MessageBubble
                 message={item}
@@ -471,6 +473,8 @@ export default function ChatDoctorScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.messagesContainer}
             onEndReachedThreshold={0.1}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             ListHeaderComponent={
               messages.length > 0 && (
                 <View style={styles.dateHeader}>

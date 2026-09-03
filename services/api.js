@@ -87,7 +87,14 @@ class ApiClient {
           );
         }
         console.error(`API Error (${response.status}):`, data);
-        throw new Error(data.error || data.message || "Request failed");
+        const detail = data.details ? `: ${data.details}` : "";
+        const error = new Error(
+          `${data.error || data.message || "Request failed"}${detail}`,
+        );
+        error.status = response.status;
+        error.provider = data.provider || null;
+        error.hint = data.hint || null;
+        throw error;
       }
 
       return data;
@@ -155,7 +162,11 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || "Upload failed");
+        const error = new Error(
+          `${data.error || data.message || "Upload failed"}${data.details ? `: ${data.details}` : ""}`,
+        );
+        error.status = response.status;
+        throw error;
       }
 
       return data;
@@ -201,6 +212,7 @@ export const aiAPI = {
   analyzeSymptom: (symptomData) =>
     apiClient.post("/ai/analyze-symptom", symptomData),
   getSessions: (params = {}) => apiClient.get("/ai/sessions", params),
+  getTavusStatus: () => apiClient.get("/ai/tavus-status"),
 };
 
 // Twi Assistant API (Twi path — free knowledge base (TF-IDF + Groq) + TalkingHead avatar)
