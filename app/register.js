@@ -80,20 +80,8 @@ export default function RegisterScreen() {
       const result = await register(registrationData);
 
       if (result.success) {
-        // Show success message and redirect to login
-        Alert.alert(
-          "Registration Successful",
-          `Welcome, ${formData.name}! Your account has been created. Please login with your credentials.`,
-          [
-            {
-              text: "Go to Login",
-              onPress: () => {
-                setLoading(false);
-                router.replace("/login");
-              },
-            },
-          ],
-        );
+        setLoading(false);
+        router.replace("/login");
       } else {
         setLoading(false);
         Alert.alert("Registration Failed", result.error || "Unknown error");

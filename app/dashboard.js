@@ -66,7 +66,7 @@ const ActionButton = ({
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const colors = Colors.light;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -198,16 +198,10 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={async () => {
-              try {
-                await logout();
-              } catch (error) {
-                console.error("Logout error:", error);
-              }
-            }}
+            onPress={() => router.push("/profile")}
             style={styles.logoutIconButton}
           >
-            <MaterialCommunityIcons name="logout" size={20} color="#e63946" />
+            <MaterialCommunityIcons name="account" size={20} color="#94a3b8" />
           </TouchableOpacity>
         </View>
 

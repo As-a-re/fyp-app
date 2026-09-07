@@ -2,7 +2,6 @@ import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import BottomNav from "../components/BottomNav";
-import TopBar from "../components/TopBar";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 
 function RootLayoutContent() {
@@ -18,20 +17,10 @@ function RootLayoutContent() {
     pathname === "/chat-doctor" ||
     !isAuthenticated;
 
-  // Hide top bar on login, register, index, chat, and unauthenticated pages
-  const hideTopBar =
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/index" ||
-    pathname === "/" ||
-    pathname === "/chat-doctor" ||
-    !isAuthenticated;
-
   return (
     <>
       <StatusBar style="auto" />
       <View style={{ flex: 1 }}>
-        {!hideTopBar && <TopBar />}
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
