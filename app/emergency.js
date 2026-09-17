@@ -31,9 +31,7 @@ export default function EmergencyScreen() {
   };
 
   const handleNearestHospital = () => {
-    // This would typically open maps or navigate to hospital finder
-    // For now, we'll show a placeholder
-    router.push("/appointments");
+    router.push("/nearest-hospitals");
   };
 
   return (

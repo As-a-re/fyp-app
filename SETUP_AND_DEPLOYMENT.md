@@ -29,6 +29,22 @@ WHERE id = 'PATIENT_UUID';
 
 The backend uses the Supabase service-role client for server-side access, so keep the service-role key on the backend only.
 
+## Password reset
+
+Run `backend/database/password_reset_migration.sql` in Supabase. Configure these backend environment variables before enabling Forgot password:
+
+```env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-sender@example.com
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=MamaGuard <your-sender@example.com>
+PASSWORD_RESET_URL=https://your-app.example.com/reset-password
+```
+
+`PASSWORD_RESET_URL` must point to the deployed Expo web app or another route that can open the reset screen. The reset token expires after 30 minutes and is stored only as a hash in the database.
+
 ## 2. Backend environment
 
 Copy `.env.example` / `backend/.env.example` and provide real credentials in the local backend environment. Never commit real secrets.

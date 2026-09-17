@@ -51,7 +51,7 @@ const HealthForm = ({
 
     <View style={styles.inputRow}>
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Blood Pressure (120/80)"
         value={bloodPressure}
         onChangeText={setBloodPressure}
@@ -59,7 +59,7 @@ const HealthForm = ({
         placeholderTextColor={colors.textSecondary}
       />
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Blood Sugar (95)"
         value={bloodSugar}
         onChangeText={setBloodSugar}
@@ -70,7 +70,7 @@ const HealthForm = ({
 
     <View style={styles.inputRow}>
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Heart Rate (80)"
         value={heartRate}
         onChangeText={setHeartRate}
@@ -78,7 +78,7 @@ const HealthForm = ({
         placeholderTextColor={colors.textSecondary}
       />
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Temperature °C (36.6)"
         value={temperature}
         onChangeText={setTemperature}
@@ -89,7 +89,7 @@ const HealthForm = ({
 
     <View style={styles.inputRow}>
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Weight (68)"
         value={weight}
         onChangeText={setWeight}
@@ -97,7 +97,7 @@ const HealthForm = ({
         placeholderTextColor={colors.textSecondary}
       />
       <TextInput
-        style={[styles.input, { backgroundColor: colors.background }]}
+        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.primary }]}
         placeholder="Oxygen Level (98)"
         value={oxygenLevel}
         onChangeText={setOxygenLevel}
@@ -274,7 +274,7 @@ export default function HealthMonitoringScreen() {
           })}
         </Text>
         <Text style={[styles.historyVitals, { color: colors.text }]}>
-          BP: {item.blood_pressure} • HR: {item.heart_rate}
+          BP: {item.blood_pressure || "-"} • HR: {item.heart_rate || "-"}
         </Text>
       </View>
       <View style={{ alignItems: "flex-end" }}>
@@ -282,7 +282,7 @@ export default function HealthMonitoringScreen() {
           SpO2: {item.oxygen_level}%
         </Text>
         <Text style={[styles.historyVitals, { color: colors.text }]}>
-          {item.weight} kg
+          {item.weight || "-"} kg
         </Text>
       </View>
     </View>
@@ -298,10 +298,11 @@ export default function HealthMonitoringScreen() {
       )
       .reverse();
 
-    const bpSystolic = history
+    const chartHistory = history.filter((item) => item.blood_pressure?.includes("/"));
+    const bpSystolic = chartHistory
       .map((item) => parseInt(item.blood_pressure.split("/")[0], 10))
       .reverse();
-    const bpDiastolic = history
+    const bpDiastolic = chartHistory
       .map((item) => parseInt(item.blood_pressure.split("/")[1], 10))
       .reverse();
 
@@ -487,15 +488,16 @@ const styles = StyleSheet.create({
   formTitle: { fontSize: 18, fontWeight: "bold" },
   inputRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 8,
     marginBottom: 10,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     height: 45,
     borderRadius: 10,
     paddingHorizontal: 15,
-    marginHorizontal: 5,
+    marginHorizontal: 0,
     borderWidth: 1,
     borderColor: "#eee",
   },

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
+import { authAPI } from "../services/api";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState("mother");
   const [loading, setLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -51,6 +53,22 @@ export default function LoginScreen() {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim() || !email.includes("@")) {
+      Alert.alert("Enter your email", "Enter the email used for your MamaGuard account first.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const response = await authAPI.forgotPassword(email.trim());
+      Alert.alert("Check your email", response.message || "If the account exists, a reset link has been sent.");
+    } catch (error) {
+      Alert.alert("Unable to send reset link", error.message || "Please try again later.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -237,6 +255,10 @@ export default function LoginScreen() {
               ) : (
                 <Text style={styles.loginButtonText}>Log In</Text>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleForgotPassword} disabled={loading || forgotLoading} style={styles.forgotButton}>
+              {forgotLoading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>}
             </TouchableOpacity>
 
             {/* Sign Up Link */}

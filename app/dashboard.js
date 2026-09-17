@@ -27,12 +27,16 @@ import {
 
 const { width } = Dimensions.get("window");
 
-const VitalsCard = ({ label, value, unit, colors }) => (
-  <View style={[styles.vitalsCard, { backgroundColor: colors.background }]}>
+const VitalsCard = ({ label, value, unit, colors, onPress }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.75}
+    style={[styles.vitalsCard, { backgroundColor: colors.background }]}
+  >
     <Text style={[styles.vitalsLabel, { color: colors.text }]}>{label}</Text>
     <Text style={[styles.vitalsValue, { color: colors.text }]}>{value}</Text>
     <Text style={[styles.vitalsUnit, { color: colors.text }]}>{unit}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
 const ActionButton = ({
@@ -150,22 +154,11 @@ export default function DashboardScreen() {
   };
 
   const getPregnancyWeek = () => {
-    if (user?.pregnancy_start_date) {
-      const startDate = new Date(user.pregnancy_start_date);
-      const today = new Date();
-      const diffInMs = today.getTime() - startDate.getTime();
-      return Math.floor(diffInMs / (1000 * 60 * 60 * 24 * 7));
-    }
-    return 28;
+    return healthData?.gestational_age ?? user?.pregnancyProfile?.gestational_age ?? "Not set";
   };
 
   const getDueDate = () => {
-    if (user?.pregnancy_start_date) {
-      const startDate = new Date(user.pregnancy_start_date);
-      startDate.setDate(startDate.getDate() + 280);
-      return startDate.toISOString().split("T")[0];
-    }
-    return "2026-06-15";
+    return healthData?.due_date || user?.pregnancyProfile?.due_date || "Not set";
   };
 
   if (loading) {
@@ -240,44 +233,50 @@ export default function DashboardScreen() {
                 <VitalsCard
                   key="bp"
                   label="BP"
-                  value={healthData?.blood_pressure || "118/75"}
+                  value={healthData?.blood_pressure || "Not recorded"}
                   unit="mmHg"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
                 <VitalsCard
                   key="hr"
                   label="HR"
-                  value={healthData?.heart_rate || "82"}
+                  value={healthData?.heart_rate || "Not recorded"}
                   unit="bpm"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
                 <VitalsCard
                   key="spo2"
                   label="SpO2"
-                  value={healthData?.oxygen_saturation || "98"}
+                  value={healthData?.oxygen_level || "Not recorded"}
                   unit="%"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
                 <VitalsCard
                   key="sugar"
                   label="Sugar"
-                  value={healthData?.blood_sugar || "95"}
+                  value={healthData?.blood_sugar || "Not recorded"}
                   unit="mg/dL"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
                 <VitalsCard
                   key="temp"
                   label="Temp"
-                  value={healthData?.temperature || "36.6"}
+                  value={healthData?.temperature || "Not recorded"}
                   unit="°C"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
                 <VitalsCard
                   key="weight"
                   label="Weight"
-                  value={healthData?.weight || "68.5"}
+                  value={healthData?.weight || "Not recorded"}
                   unit="kg"
                   colors={colors}
+                  onPress={() => router.push("/health-monitoring")}
                 />
               </View>
             </View>
@@ -415,7 +414,9 @@ const DoctorDashboard = ({ user, patients, appointments, router, colors }) => {
 
   const StatCard = ({ icon, label, value, color = "#000" }) => (
     <View style={styles.statCard}>
-      <MaterialCommunityIcons name={icon} size={32} color={color} />
+      <View style={[styles.statIcon, { backgroundColor: color === "#E63946" ? "#fff0f0" : "#e8f8f1" }]}>
+        <MaterialCommunityIcons name={icon} size={18} color={color === "#000" ? "#00b878" : color} />
+      </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -623,6 +624,9 @@ const DoctorDashboard = ({ user, patients, appointments, router, colors }) => {
       <View style={styles.appointmentsSection}>
         <View style={styles.appointmentsSectionHeader}>
           <Text style={styles.appointmentsSectionTitle}>My Appointments</Text>
+          <TouchableOpacity onPress={() => router.push("/appointments")}>
+            <Text style={styles.viewAllLink}>View all</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Filter Buttons */}
@@ -807,10 +811,12 @@ const DoctorDashboard = ({ user, patients, appointments, router, colors }) => {
 
       {/* My Patients Section */}
       <View style={styles.myPatientsSection}>
-        <Text style={styles.myPatientsSectionTitle}>My Patients</Text>
-        <Text style={styles.myPatientsSubtitle}>
-          {totalPatients} active patient{totalPatients !== 1 ? "s" : ""}
-        </Text>
+        <View style={styles.patientSectionHeader}>
+          <Text style={styles.myPatientsSectionTitle}>Recent Patients</Text>
+          <TouchableOpacity onPress={() => router.push("/patients")}>
+            <Text style={styles.viewAllLink}>View all</Text>
+          </TouchableOpacity>
+        </View>
         {patients && patients.length > 0 ? (
           <FlatList
             data={patients}
@@ -934,8 +940,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  sectionTitle: { fontSize: 18, fontWeight: "600", marginVertical: 10 },
-
   patientCard: {
     padding: 15,
     borderRadius: 10,
@@ -952,16 +956,16 @@ const styles = StyleSheet.create({
   // Doctor Dashboard Styles
   statsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
     marginBottom: 12,
   },
   statCard: {
     flex: 1,
     backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 6,
-    alignItems: "center",
+    minHeight: 114,
+    padding: 14,
+    borderRadius: 15,
+    alignItems: "flex-start",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -969,21 +973,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#000",
-    marginVertical: 4,
+    marginTop: 8,
   },
   statLabel: {
-    fontSize: 12,
-    color: "#6c757d",
-    textAlign: "center",
+    fontSize: 11,
+    textAlign: "left",
+    color: "#8a9792",
+  },
+  statIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   criticalAlert: {
     backgroundColor: "#FFE0D0",
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     marginVertical: 12,
     borderLeftWidth: 4,
     borderLeftColor: "#E63946",
@@ -1090,6 +1101,9 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   noAppointmentsContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    minHeight: 150,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 30,
@@ -1155,6 +1169,12 @@ const styles = StyleSheet.create({
 
   myPatientsSection: {
     marginTop: 12,
+  },
+  patientSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
   myPatientsSectionTitle: {
     fontSize: 16,

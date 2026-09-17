@@ -27,8 +27,10 @@ export default function RegisterScreen() {
     confirmPassword: "",
     role: "Mother",
     phone: "",
+    pregnancyWeeks: "",
   });
   const [loading, setLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
   const { register } = useAuth();
 
   const handleInputChange = (field, value) => {
@@ -36,59 +38,73 @@ export default function RegisterScreen() {
   };
 
   const validateForm = () => {
-    const { name, email, password, confirmPassword, phone } = formData;
+    const { name, email, password, confirmPassword, phone, pregnancyWeeks } = formData;
+
+    const failValidation = (message) => {
+      setRegistrationError(message);
+      Alert.alert("Error", message);
+      return false;
+    };
 
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all required fields");
-      return false;
+      return failValidation("Please fill in all required fields");
     }
 
     if (name.length < 2) {
-      Alert.alert("Error", "Name must be at least 2 characters");
-      return false;
+      return failValidation("Name must be at least 2 characters");
     }
 
     if (!email.includes("@") || !email.includes(".")) {
-      Alert.alert("Error", "Please enter a valid email");
-      return false;
+      return failValidation("Please enter a valid email");
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return false;
+      return failValidation("Password must be at least 6 characters");
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return false;
+      return failValidation("Passwords do not match");
     }
 
     if (phone && phone.length < 10) {
-      Alert.alert("Error", "Please enter a valid phone number");
-      return false;
+      return failValidation("Please enter a valid phone number");
+    }
+
+    if (formData.role === "Mother") {
+      const weeks = Number(pregnancyWeeks);
+      if (!pregnancyWeeks || !Number.isInteger(weeks) || weeks < 0 || weeks > 42) {
+        return failValidation("Please enter your current pregnancy weeks (0-42)");
+      }
     }
 
     return true;
   };
 
   const handleRegister = async () => {
+    setRegistrationError("");
     if (!validateForm()) return;
 
     setLoading(true);
+    setRegistrationError("Creating your account...");
     try {
-      const { confirmPassword, ...registrationData } = formData;
+      const { confirmPassword, pregnancyWeeks, ...registrationData } = formData;
+      if (formData.role === "Mother") {
+        registrationData.gestational_age = Number(pregnancyWeeks);
+      }
       const result = await register(registrationData);
 
       if (result.success) {
-        setLoading(false);
+        setRegistrationError("");
         router.replace("/login");
       } else {
-        setLoading(false);
+        setRegistrationError(result.error || "Registration failed. Please try again.");
         Alert.alert("Registration Failed", result.error || "Unknown error");
       }
     } catch (error) {
-      setLoading(false);
+      setRegistrationError(error.message || "Unable to reach the server. Please try again.");
       Alert.alert("Error", error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -332,6 +348,21 @@ export default function RegisterScreen() {
             </View>
 
             {/* Register Button */}
+            {formData.role === "Mother" && (
+              <View style={styles.inputContainer}>
+                <Text style={[styles.label, { color: colors.foreground }]}>How many weeks pregnant are you?</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground }]}
+                  value={formData.pregnancyWeeks}
+                  onChangeText={(value) => handleInputChange("pregnancyWeeks", value.replace(/[^0-9]/g, ""))}
+                  placeholder="e.g. 18"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="number-pad"
+                  editable={!loading}
+                />
+              </View>
+            )}
+
             <TouchableOpacity
               style={[
                 styles.registerButton,
@@ -347,6 +378,10 @@ export default function RegisterScreen() {
                 <Text style={styles.registerButtonText}>Sign Up</Text>
               )}
             </TouchableOpacity>
+
+            {registrationError ? (
+              <Text style={styles.registrationError}>{registrationError}</Text>
+            ) : null}
 
             {/* Login Link */}
             <View style={styles.loginContainer}>
@@ -485,6 +520,13 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 14,
     fontWeight: "700",
+  },
+  registrationError: {
+    color: "#c62828",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+    marginBottom: 12,
   },
   loginContainer: {
     flexDirection: "row",

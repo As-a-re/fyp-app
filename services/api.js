@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 
 // API Base URL - prioritize environment variables, then use defaults based on environment
 const getApiBaseUrl = () => {
@@ -17,11 +17,12 @@ const getApiBaseUrl = () => {
     return devUrl;
   }
 
-  // Fallback for local development
-  // Use 10.0.2.2 for Android emulator (refers to host machine)
-  // Use localhost for web
-  // For physical devices, set EXPO_PUBLIC_DEV_API_URL to your machine IP
-  return "http://localhost:5000/api";
+  // Fallback for local development. Android emulators use 10.0.2.2 to reach
+  // the host machine; web and iOS simulators can use localhost. Physical
+  // devices should set EXPO_PUBLIC_DEV_API_URL to the host machine's LAN IP.
+  return Platform.OS === "android"
+    ? "http://10.0.2.2:5000/api"
+    : "http://localhost:5000/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -185,6 +186,8 @@ export const authAPI = {
   register: (userData) => apiClient.post("/auth/register", userData),
   login: (credentials) => apiClient.post("/auth/login", credentials),
   getProfile: () => apiClient.get("/auth/profile"),
+  forgotPassword: (email) => apiClient.post("/auth/forgot-password", { email }),
+  resetPassword: (token, password) => apiClient.post("/auth/reset-password", { token, password }),
 };
 
 // Health Monitoring API
