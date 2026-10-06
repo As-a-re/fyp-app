@@ -58,9 +58,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fffdf8",
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: "#d9ded6",
     paddingBottom: 10,
   },
   nav: {
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#94a3b8",
+    color: "#92a19a",
   },
   activeLabel: {
     color: Colors.light.primary,

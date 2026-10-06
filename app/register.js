@@ -126,7 +126,7 @@ export default function RegisterScreen() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <LinearGradient
-                colors={["#2d9d78", "#3eaf8f"]}
+                colors={["#0d5b56", "#2d8176"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.logoGradient}
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   registerButton: {
-    backgroundColor: "#2d9d78",
+    backgroundColor: "#0d5b56",
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",

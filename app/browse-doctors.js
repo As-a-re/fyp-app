@@ -18,8 +18,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { doctorAPI } from "../services/api";
 
 const DoctorCard = ({ doctor, onPress, onMessage, colors }) => {
+  const doctorName = String(doctor.name || "Doctor");
+  const doctorEmail = String(doctor.email || "");
+  const doctorPhone = doctor.phone ? String(doctor.phone) : "";
   const initials =
-    doctor.name
+    doctorName
       ?.split(" ")
       .map((n) => n[0])
       .join("")
@@ -38,16 +41,16 @@ const DoctorCard = ({ doctor, onPress, onMessage, colors }) => {
         </View>
         <View style={styles.doctorInfo}>
           <Text style={[styles.doctorName, { color: colors.text }]}>
-            {doctor.name || "Doctor"}
+            {doctorName}
           </Text>
           <Text style={[styles.doctorEmail, { color: colors.textSecondary }]}>
-            {doctor.email}
+            {doctorEmail}
           </Text>
-          {doctor.phone && (
+          {doctorPhone ? (
             <Text style={[styles.doctorPhone, { color: colors.textSecondary }]}>
-              📞 {doctor.phone}
+              {`Phone: ${doctorPhone}`}
             </Text>
-          )}
+          ) : null}
         </View>
       </View>
       <View style={styles.actionsContainer}>

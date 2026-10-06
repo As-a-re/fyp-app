@@ -9,16 +9,16 @@ import { Platform } from "react-native";
 // Based on HSL values from bloom design tokens
 
 // Primary: HSL(152, 55%, 40%) - Teal/Green
-const primaryColor = "#2d9d78";
-const primaryLight = "#3eaf8f";
-const primaryDark = "#1f7056";
+const primaryColor = "#0d5b56";
+const primaryLight = "#2d8176";
+const primaryDark = "#08413e";
 
 // Background and Surfaces
-const backgroundLight = "#f8fbf9"; // HSL(120, 20%, 98%)
-const cardLight = "#ffffff"; // 0 0% 100%
-const foregroundLight = "#1a2e29"; // HSL(160, 25%, 10%)
-const mutedLight = "#ede9e6"; // HSL(120, 15%, 93%)
-const borderLight = "#e0e7e3"; // HSL(120, 15%, 88%)
+const backgroundLight = "#f4f0e8";
+const cardLight = "#fffdf8";
+const foregroundLight = "#173b37";
+const mutedLight = "#e7e4db";
+const borderLight = "#d9ded6";
 
 // Dark mode variants
 const backgroundDark = "#0f1612"; // HSL(160, 20%, 6%)
@@ -60,7 +60,7 @@ export const Colors = {
 
     // Semantic
     destructive: riskHigh,
-    accent: "#3eb8a8",
+    accent: "#b8ddd0",
   },
   dark: {
     // Primary colors

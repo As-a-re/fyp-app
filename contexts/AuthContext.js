@@ -1,9 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { authAPI } from "../services/api";
 import { registerForPushNotifications } from "../services/pushNotifications";
 
 const AuthContext = createContext();
+
+const normalizeUser = (user) => {
+  if (!user) return user;
+  return {
+    ...user,
+    role: String(user.role || "").trim().toLowerCase(),
+  };
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -18,19 +26,14 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for existing session on app start
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     registerForPushNotifications().catch((error) => {
       console.warn("Push notification registration unavailable:", error.message);
     });
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user]);
 
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
       if (token) {
@@ -38,16 +41,19 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await authAPI.getProfile();
           if (response.user) {
-            setUser(response.user);
+            setUser(normalizeUser(response.user));
             setIsAuthenticated(true);
           } else {
             // Token invalid, clear it
             await AsyncStorage.removeItem("authToken");
           }
         } catch (apiError) {
-          // API is unavailable, but token exists - keep user authenticated for now
+          // Do not render a dashboard without a validated role. Otherwise an
+          // unavailable profile request can fall through to the doctor view.
           console.warn("Could not validate token with API:", apiError.message);
-          setIsAuthenticated(true);
+          await AsyncStorage.removeItem("authToken");
+          setUser(null);
+          setIsAuthenticated(false);
         }
       }
     } catch (error) {
@@ -56,7 +62,12 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Check for existing session on app start
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = async (email, password, role = "mother") => {
     try {
@@ -65,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 
       if (response.token && response.user) {
         await AsyncStorage.setItem("authToken", response.token);
-        setUser(response.user);
+        setUser(normalizeUser(response.user));
         setIsAuthenticated(true);
         return { success: true, user: response.user };
       }

@@ -27,6 +27,17 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+const parseResponseBody = async (response) => {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return { message: text.trim() };
+  }
+};
+
 class ApiClient {
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -68,7 +79,7 @@ class ApiClient {
     try {
       console.log(`API Request: ${options.method || "GET"} ${url}`);
       const response = await fetch(url, config);
-      const data = await response.json();
+      const data = await parseResponseBody(response);
       console.log(`API Response (${response.status}):`, data);
 
       if (!response.ok) {
@@ -385,7 +396,7 @@ export const appointmentAPI = {
   cancelAppointment: (appointmentId) =>
     apiClient.delete(`/appointments/${appointmentId}`),
   getDoctorAppointments: (params = {}) =>
-    apiClient.get("/appointments/doctor", params),
+    apiClient.get("/appointments/doctor/schedule", params),
 };
 
 // Medical Records API
